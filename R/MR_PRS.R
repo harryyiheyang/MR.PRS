@@ -84,18 +84,18 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
     PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
   }
   PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
-  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
+  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"]^2)
   for(i in 1:length(NAM)){
-    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]]^2))
+    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]]^2)
   }
   predictors_string <- paste(NAM, collapse = " + ")
-  full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
+  full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
   fitjoint <- lm(full_formula, data = PRSCS)
   sumdata=as.data.frame(summary(fitjoint)$coefficient)
   A=matrix(0,length(NAM),2)
   for(i in 1:length(NAM)){
-    full_formula_string <- paste0("outcome", " ~ ", NAM[i],"-1")
+    full_formula_string <- paste0("outcome", " ~ ", NAM[i])
     full_formula <- as.formula(full_formula_string)
     fit=lm(full_formula,data=PRSCS)
     A[i,]=c(summary(fit)$coefficient[1:2])
