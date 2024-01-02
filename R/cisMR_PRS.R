@@ -46,7 +46,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   eQTL_data=list()
   NeQTL=c(1:length(NAM))
   for(i in 1:length(NAM)){
-    A=fread(eQTL_list[[i]])
+    A=fread(eQTL_list[[i]])%>%as.data.frame(.)
     A=A[which(A$GeneSymbol==GENE[i]),]
     A=A%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
     eQTL_data[[i]]=A

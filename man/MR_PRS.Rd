@@ -34,8 +34,6 @@ MR_PRS(
 \item{indMR}{The IDs of individual in UK Biobank used to perform MVMR analysis.}
 
 \item{intercept}{If an intercept is included in the MVMR analysis.}
-
-\item{Nvec}{A vector of sample sizes of outcome and exposures GWAS. The first element should be the sample size of outcome GWAS.}
 }
 \value{
 An object of class lm representing the linear model fit

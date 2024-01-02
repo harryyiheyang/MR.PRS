@@ -4,7 +4,6 @@
 #'
 #' @param outcomefile Path to the outcome file containing GWAS summary statistics for the outcome of interest. It should include columns for SNP identifiers, chromosome index, base pair positions, effect alleles, other alleles, Z-scores, and P-values.
 #' @param exposure_list A list of paths to exposure files. Exposure file corresponding to each path should have the same column as outcome file.
-#' @param Nvec A vector of sample sizes of outcome and exposures GWAS. The first element should be the sample size of outcome GWAS.
 #' @param prscsxpath Path to PRSCSx directory
 #' @param plinkpath Path to Plink software
 #' @param conda_env The name of the environment of PRSCSx in conda
@@ -20,47 +19,57 @@
 #' @export
 
 
-MR_PRS=function(outcomefile, exposure_list, Nvec, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
+MR_PRS=function(outcomefile, exposure_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
   temporary_file_dir <- file.path(temp_dir, "temporary_file")
   dir.create(prs_file_dir)
   dir.create(temporary_file_dir)
-  NAM=names(exposure_list)
-  for(i in 1:length(NAM)){
-    A=fread(exposure_list[[i]])
-    A=A%>%dplyr::select(SNP,CHR,A1,A2,BETA=Zscore,P,N)
-    exposure_data[[i]]=A
-    Nexposure[i]=median(A$N)
-  }
-  outcome=fread(outcomefile)%>%as.data.frame(.)
-  outcome=outcome%>%dplyr::select(SNP,CHR,A1,A2,BETA=Zscore,P,N)
 
-  for(CHR in 1:22){
-  print(glue("CHR{CHR}: Processing the data"))
-  outcome=outcome[which(outcome$CHR==CHR),]
-  write.table(outcome1,glue("{temporary_file_dir}/outcome.txt"),row.names=F,quote=F,sep="\t")
-  for(i in 1:length(NAM)){
-    A=exposure_data[[i]]
-    A=A[which(A$CHR==CHR),]
-    write.table(CHR,glue("{temporary_file_dir}/{NAM[i]}.txt"),row.names=F,quote=F,sep="\t")
-  }
-
-  print("CHR{CHR}: Estimation of PRS using PRSCS")
   use_condaenv(conda_env, required = TRUE)
-  setwd(prscsxpath)
-  system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR]} --sst_file={temporary_file_dir}/outcome.txt --n_gwas={Nvec[1]} --pop=EUR --out_dir={prs_file_dir} --out_name=outcome --chrom={CHR}"))
+  NAM=names(exposure_list)
+  exposure_data=list()
   for(i in 1:length(NAM)){
-    system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR]} --sst_file={temporary_file_dir}/{NAM[i]}.txt --n_gwas={Nvec[i+1]} --pop=EUR --out_dir={prs_file_dir} --out_name={NAM[i]} --chrom={CHR}"))
+    A=fread(exposure_list[[i]])%>%setDT(.)
+    A=A%>%dplyr::select(SNP,CHR,A1,A2,BETA=Zscore,P,N)
+    A$P=as.numeric(A$P)
+    A$BETA=as.numeric(A$BETA)
+    exposure_data[[i]]=A
   }
+  outcome=fread(outcomefile)%>%setDT(.)
+  outcome=outcome%>%dplyr::select(SNP,CHR,A1,A2,BETA=Zscore,P,N)
+  outcome$P=as.numeric(outcome$P)
+  outcome$BETA=as.numeric(outcome$BETA)
 
-  print("Step 3: Calculation of PRS using PLINK")
-  setwd(plinkpath)
-  system(glue("./plink --bfile {bfile[CHR]} --score {prs_file_dir}/outcome_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR}.txt 2 4 6 header sum --out {prs_file_dir}/outcome_{CHR}"))
-  for(i in 1:length(NAM)){
-    system(glue("./plink --bfile {bfile[CHR]} --score {prs_file_dir}/{NAM[i]}_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR}.txt 2 4 6 header sum --out {prs_file_dir}/{NAM[i]}_{CHR}"))
-  }
+  for(CHR_target  in 1:22){
+    print(glue("CHR{CHR_target }: Processing the data"))
+    outcome1=outcome[CHR==CHR_target]
+    Noutcome=median(outcome1$N)
+    outcome1$CHR=outcome1$N=NULL
+    write.table(outcome1,glue("{temporary_file_dir}/outcome.txt"),row.names=F,quote=F,sep="\t")
+    Nexposure=c(1:length(NAM))
+    for(i in 1:length(NAM)){
+      A=exposure_data[[i]]
+      A=A[CHR==CHR_target]
+      Nexposure[i]=median(A$N)
+      A$CHR=A$N=NULL
+      write.table(A,glue("{temporary_file_dir}/{NAM[i]}.txt"),row.names=F,quote=F,sep="\t")
+    }
+
+    print("CHR{CHR_target}: Estimation of PRS using PRSCS")
+    setwd(prscsxpath)
+    system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR_target]} --sst_file={temporary_file_dir}/outcome.txt --n_gwas={Noutcome} --pop=EUR --out_dir={prs_file_dir} --out_name=outcome --chrom={CHR_target}"))
+    for(i in 1:length(NAM)){
+      system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR_target]} --sst_file={temporary_file_dir}/{NAM[i]}.txt --n_gwas={Nexposure[i]} --pop=EUR --out_dir={prs_file_dir} --out_name={NAM[i]} --chrom={CHR_target}"))
+    }
+
+    print("Step 3: Calculation of PRS using PLINK")
+    setwd(plinkpath)
+    system(glue("./plink --bfile {bfile[CHR_target]} --score {prs_file_dir}/outcome_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR_target}.txt 2 4 6 header sum --out {prs_file_dir}/outcome_{CHR_target}"))
+    for(i in 1:length(NAM)){
+      system(glue("./plink --bfile {bfile[CHR_target]} --score {prs_file_dir}/{NAM[i]}_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR_target}.txt 2 4 6 header sum --out {prs_file_dir}/{NAM[i]}_{CHR_target}"))
+    }
 
   }
 
