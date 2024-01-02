@@ -84,9 +84,9 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
     PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
   }
   PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
-  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"]^2)
+  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"])
   for(i in 1:length(NAM)){
-    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]]^2)
+    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
   }
   predictors_string <- paste(NAM, collapse = " + ")
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
