@@ -27,7 +27,7 @@ MR_PRS=function(outcomefile, exposure_list, Nvec, prscsxpath, plinkpath, conda_e
   temporary_file_dir <- file.path(temp_dir, "temporary_file")
   dir.create(prs_file_dir)
   dir.create(temporary_file_dir)
-
+  NAM=names(exposure_list)
   for(i in 1:length(NAM)){
     A=fread(exposure_list[[i]])
     A=A%>%dplyr::select(SNP,CHR,A1,A2,BETA=Zscore,P,N)
