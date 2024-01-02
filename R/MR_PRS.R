@@ -104,5 +104,6 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
   sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
   sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
   unlink(temp_dir, recursive = TRUE)
-  return(sumdata)
+  fitjoint$summarydata=sumdata
+  return(fitjoint)
 }
