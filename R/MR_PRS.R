@@ -20,7 +20,7 @@
 #' @export
 
 
-MR_PRS=function(outcomefile, exposure_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
+MR_PRS=function(outcomefile, exposure_list, Nvec, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
@@ -50,9 +50,9 @@ MR_PRS=function(outcomefile, exposure_list, prscsxpath, plinkpath, conda_env, re
   print("CHR{CHR}: Estimation of PRS using PRSCS")
   use_condaenv(conda_env, required = TRUE)
   setwd(prscsxpath)
-  system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR]} --sst_file={temporary_file_dir}/outcome.txt --n_gwas={Noutcome} --pop=EUR --out_dir={prs_file_dir} --out_name=outcome --chrom={CHR}"))
+  system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR]} --sst_file={temporary_file_dir}/outcome.txt --n_gwas={Nvec[1]} --pop=EUR --out_dir={prs_file_dir} --out_name=outcome --chrom={CHR}"))
   for(i in 1:length(NAM)){
-    system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR]} --sst_file={temporary_file_dir}/{NAM[i]}.txt --n_gwas={Nexposure[i]} --pop=EUR --out_dir={prs_file_dir} --out_name={NAM[i]} --chrom={CHR}"))
+    system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile[CHR]} --sst_file={temporary_file_dir}/{NAM[i]}.txt --n_gwas={Nvec[i+1]} --pop=EUR --out_dir={prs_file_dir} --out_name={NAM[i]} --chrom={CHR}"))
   }
 
   print("Step 3: Calculation of PRS using PLINK")
