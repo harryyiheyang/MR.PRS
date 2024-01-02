@@ -92,13 +92,13 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
   fitjoint <- lm(full_formula, data = PRSCS)
-  sumdata=as.data.frame(summary(fitjoint)$coefficient)
+  sumdata=as.data.frame(summary(fitjoint)$coefficient[-1,])
   A=matrix(0,length(NAM),2)
   for(i in 1:length(NAM)){
     full_formula_string <- paste0("outcome", " ~ ", NAM[i])
     full_formula <- as.formula(full_formula_string)
     fit=lm(full_formula,data=PRSCS)
-    A[i,]=c(summary(fit)$coefficient[1:2])
+    A[i,]=c(summary(fit)$coefficient[2,1:2])
   }
   sumdata$cor=A[,1];sumdata$corse=A[,2]
   sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
