@@ -17,20 +17,10 @@
 #' @importFrom glue glue
 #' @importFrom reticulate use_condaenv
 #' @return An object of class lm representing the linear model fit
-#' @examples
-#' MR_PRS(outcomefile = "path/to/outcomefile.csv",
-#'        CHR = 1,
-#'        BPcenter = 15000000,
-#'        BPtol = 1500000,
-#'        exposures_list = list("path/to/exposure1.csv", "path/to/exposure2.csv"),
-#'        prscsxpath = "/path/to/PRScsx/",
-#'        plinkpath = "/path/to/Plink/",
-#'        conda_env = "prscsx_env",
-#'        indMR = c(1, 2, 3, 4))
 #' @export
 
 
-cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, exposure_list, prscsxpath, plinkpath, conda_env, ref_dir, bimfile, indMR, intercept=F){
+MR_PRS=function(outcomefile, exposure_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
