@@ -79,6 +79,7 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
   }
 
   print("Step 4: Performing MVMR using predicted scores")
+  if(intercept==T){
   pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
   PRSCS=data.frame(ID=pred_outcome$FID,outcome=pred_outcome$SCORESUM)
   for(i in 1:length(NAM)){
@@ -90,8 +91,6 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
     PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
   }
   predictors_string <- paste(NAM, collapse = " + ")
-
-  if(intercept==T){
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
   fitjoint <- lm(full_formula, data = PRSCS)
@@ -109,6 +108,17 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
   }
 
   if(intercept==F){
+    pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
+    PRSCS=data.frame(ID=pred_outcome$FID,outcome=pred_outcome$SCORESUM)
+    for(i in 1:length(NAM)){
+      PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
+    }
+    PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
+    PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
+    for(i in 1:length(NAM)){
+      PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]])^2)
+    }
+    predictors_string <- paste(NAM, collapse = " + ")
     full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
     full_formula <- as.formula(full_formula_string)
     fitjoint <- lm(full_formula, data = PRSCS)
