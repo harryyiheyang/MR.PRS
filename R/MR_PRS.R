@@ -13,6 +13,7 @@
 #' @param ref_dir The path of refenece panels used in PRSCSx
 #' @param bfile The PLINK  bed files used in prediction.
 #' @param indMR The IDs of individual in UK Biobank used to perform MVMR analysis.
+#' @param intercept If an intercept is included in the MVMR analysis.
 #' @importFrom data.table fread
 #' @importFrom dplyr `%>%` select
 #' @importFrom glue glue
@@ -31,7 +32,7 @@
 #' @export
 
 
-MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bimfile, indMR){
+MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bimfile, indMR, intercept=F){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
@@ -89,6 +90,8 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
     PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
   }
   predictors_string <- paste(NAM, collapse = " + ")
+
+  if(intercept==T){
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
   fitjoint <- lm(full_formula, data = PRSCS)
@@ -103,6 +106,24 @@ MR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkp
   sumdata$cor=A[,1];sumdata$corse=A[,2]
   sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
   sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+  }
+
+  if(intercept==F){
+    full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
+    full_formula <- as.formula(full_formula_string)
+    fitjoint <- lm(full_formula, data = PRSCS)
+    sumdata=as.data.frame(summary(fitjoint)$coefficient)
+    A=matrix(0,length(NAM),2)
+    for(i in 1:length(NAM)){
+      full_formula_string <- paste0("outcome", " ~ ", NAM[i],"-1")
+      full_formula <- as.formula(full_formula_string)
+      fit=lm(full_formula,data=PRSCS)
+      A[i,]=c(summary(fit)$coefficient[1:2])
+    }
+    sumdata$cor=A[,1];sumdata$corse=A[,2]
+    sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
+    sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+  }
   unlink(temp_dir, recursive = TRUE)
   fitjoint$summarydata=sumdata
   return(fitjoint)
