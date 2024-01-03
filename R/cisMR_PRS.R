@@ -131,6 +131,6 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
  sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
  sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitivw)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
  fitivw$summarydata=sumdata
-  unlink(temp_dir, recursive = TRUE)
-  return(A=list(fitegger=fitegger,fitivw=fitivw))
+ unlink(temp_dir, recursive = TRUE)
+ return(A=list(fitegger=fitegger,fitivw=fitivw))
 }
