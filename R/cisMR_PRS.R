@@ -49,13 +49,13 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
     A=A[which(A$Gene==GENE[i]),]
     A=A%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
     eQTL_data[[i]]=A
-    NeQTL[i]=ceil(median(A$N))
+    NeQTL[i]=round(median(A$N))
   }
 
   outcome=fread(outcomefile)%>%as.data.frame(.)
   SNP=c(outcome$SNP[which(outcome$CHR==CHR&abs(outcome$BP-BPcenter)<BPtol)])%>%unique(.)
   outcome=outcome[which(outcome$SNP%in%SNP),]%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
-  Noutcome=ceil(median(outcome$N))
+  Noutcome=round(median(outcome$N))
 
   write.table(outcome,glue("{temporary_file_dir}/outcome.txt"),row.names=F,quote=F,sep="\t")
   for(i in 1:length(NAM)){
@@ -85,7 +85,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   }
   PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
   PRSCS1=PRSCS
-  
+
   PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"])
   for(i in 1:length(NAM)){
     PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
@@ -106,7 +106,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
   sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitegger)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
   fitegger$summarydata=sumdata
-  
+
   PRSCS=PRSCS1
   remove(PRSCS1)
   PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
