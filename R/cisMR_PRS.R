@@ -49,13 +49,13 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
     A=A[which(A$Gene==GENE[i]),]
     A=A%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
     eQTL_data[[i]]=A
-    NeQTL[i]=median(A$N)
+    NeQTL[i]=ceil(median(A$N))
   }
 
   outcome=fread(outcomefile)%>%as.data.frame(.)
   SNP=c(outcome$SNP[which(outcome$CHR==CHR&abs(outcome$BP-BPcenter)<BPtol)])%>%unique(.)
   outcome=outcome[which(outcome$SNP%in%SNP),]%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
-  Noutcome=median(outcome$N)
+  Noutcome=ceil(median(outcome$N))
 
   write.table(outcome,glue("{temporary_file_dir}/outcome.txt"),row.names=F,quote=F,sep="\t")
   for(i in 1:length(NAM)){
