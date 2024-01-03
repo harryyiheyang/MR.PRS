@@ -90,14 +90,15 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   for(i in 1:length(NAM)){
     PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
   }
-  predictors_string <- paste(NAM, collapse = " + ")
+  variable_name <- paste0("I(`", NAM[i], "`)")
+  predictors_string <- paste(variable_name, collapse = " + ")
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
   fitjoint <- lm(full_formula, data = PRSCS)
   sumdata=as.data.frame(summary(fitjoint)$coefficient[-1,])
-  A=matrix(0,length(NAM),2)
-  for(i in 1:length(NAM)){
-    full_formula_string <- paste0("outcome", " ~ ", NAM[i])
+  A=matrix(0,length(variable_name),2)
+  for(i in 1:length(variable_name)){
+    full_formula_string <- paste0("outcome", " ~ ", variable_name[i])
     full_formula <- as.formula(full_formula_string)
     fit=lm(full_formula,data=PRSCS)
     A[i,]=c(summary(fit)$coefficient[2,1:2])
@@ -118,14 +119,15 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
     for(i in 1:length(NAM)){
       PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]])^2)
     }
-    predictors_string <- paste(NAM, collapse = " + ")
+    variable_name <- paste0("I(`", NAM[i], "`)")
+    predictors_string <- paste(variable_name, collapse = " + ")
     full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
     full_formula <- as.formula(full_formula_string)
     fitjoint <- lm(full_formula, data = PRSCS)
     sumdata=as.data.frame(summary(fitjoint)$coefficient)
     A=matrix(0,length(NAM),2)
     for(i in 1:length(NAM)){
-      full_formula_string <- paste0("outcome", " ~ ", NAM[i],"-1")
+      full_formula_string <- paste0("outcome", " ~ ", variable_name[i],"-1")
       full_formula <- as.formula(full_formula_string)
       fit=lm(full_formula,data=PRSCS)
       A[i,]=c(summary(fit)$coefficient[1:2])
