@@ -13,7 +13,6 @@
 #' @param ref_dir The path of refenece panels used in PRSCSx
 #' @param bfile The PLINK  bed files used in prediction.
 #' @param indMR The IDs of individual in UK Biobank used to perform MVMR analysis.
-#' @param intercept If an intercept is included in the MVMR analysis.
 #' @importFrom data.table fread
 #' @importFrom dplyr `%>%` select
 #' @importFrom glue glue
@@ -32,7 +31,7 @@
 #' @export
 
 
-cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
+cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
@@ -103,7 +102,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   }
   sumdata$cor=A[,1];sumdata$corse=A[,2]
   sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
-  sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+  sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitegger)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
   fitegger$summarydata=sumdata
   
   pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
@@ -130,7 +129,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   }
  sumdata$cor=A[,1];sumdata$corse=A[,2]
  sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
- sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+ sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitivw)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
  fitivw$summarydata=sumdata
   unlink(temp_dir, recursive = TRUE)
   return(A=list(fitegger=fitegger,fitivw=fitivw))
