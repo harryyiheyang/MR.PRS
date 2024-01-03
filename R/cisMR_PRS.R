@@ -109,6 +109,10 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   
   PRSCS=PRSCS1
   remove(PRSCS1)
+  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
+  for(i in 1:length(NAM)){
+    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]]^2))
+  }
   predictors_string <- paste(NAM, collapse = " + ")
   full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
   full_formula <- as.formula(full_formula_string)
