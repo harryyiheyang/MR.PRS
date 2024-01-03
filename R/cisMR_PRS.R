@@ -13,7 +13,6 @@
 #' @param ref_dir The path of refenece panels used in PRSCSx
 #' @param bfile The PLINK  bed files used in prediction.
 #' @param indMR The IDs of individual in UK Biobank used to perform MVMR analysis.
-#' @param intercept If an intercept is included in the MVMR analysis.
 #' @importFrom data.table fread
 #' @importFrom dplyr `%>%` select
 #' @importFrom glue glue
@@ -32,7 +31,7 @@
 #' @export
 
 
-cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, intercept=F){
+cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
@@ -47,7 +46,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   NeQTL=c(1:length(NAM))
   for(i in 1:length(NAM)){
     A=fread(eQTL_list[[i]])%>%as.data.frame(.)
-    A=A[which(A$GeneSymbol==GENE[i]),]
+    A=A[which(A$Gene==GENE[i]),]
     A=A%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
     eQTL_data[[i]]=A
     NeQTL[i]=ceil(median(A$N))
@@ -79,13 +78,14 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   }
 
   print("Step 4: Performing MVMR using predicted scores")
-  if(intercept==T){
   pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
   PRSCS=data.frame(ID=pred_outcome$FID,outcome=pred_outcome$SCORESUM)
   for(i in 1:length(NAM)){
     PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
   }
   PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
+  PRSCS1=PRSCS
+  
   PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"])
   for(i in 1:length(NAM)){
     PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
@@ -93,8 +93,8 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   predictors_string <- paste(NAM, collapse = " + ")
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
-  fitjoint <- lm(full_formula, data = PRSCS)
-  sumdata=as.data.frame(summary(fitjoint)$coefficient[-1,])
+  fitegger <- lm(full_formula, data = PRSCS)
+  sumdata=as.data.frame(summary(fitegger)$coefficient[-1,])
   A=matrix(0,length(NAM),2)
   for(i in 1:length(NAM)){
     full_formula_string <- paste0("outcome", " ~ ", NAM[i])
@@ -104,37 +104,31 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   }
   sumdata$cor=A[,1];sumdata$corse=A[,2]
   sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
-  sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+  sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitegger)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+  fitegger$summarydata=sumdata
+  
+  PRSCS=PRSCS1
+  remove(PRSCS1)
+  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
+  for(i in 1:length(NAM)){
+    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]]^2))
   }
-
-  if(intercept==F){
-    pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
-    PRSCS=data.frame(ID=pred_outcome$FID,outcome=pred_outcome$SCORESUM)
-    for(i in 1:length(NAM)){
-      PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
-    }
-    PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
-    PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
-    for(i in 1:length(NAM)){
-      PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]])^2)
-    }
-    predictors_string <- paste(NAM, collapse = " + ")
-    full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
-    full_formula <- as.formula(full_formula_string)
-    fitjoint <- lm(full_formula, data = PRSCS)
-    sumdata=as.data.frame(summary(fitjoint)$coefficient)
-    A=matrix(0,length(NAM),2)
-    for(i in 1:length(NAM)){
+  predictors_string <- paste(NAM, collapse = " + ")
+  full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
+  full_formula <- as.formula(full_formula_string)
+  fitivw <- lm(full_formula, data = PRSCS)
+  sumdata=as.data.frame(summary(fitivw)$coefficient)
+  A=matrix(0,length(NAM),2)
+  for(i in 1:length(NAM)){
       full_formula_string <- paste0("outcome", " ~ ", NAM[i],"-1")
       full_formula <- as.formula(full_formula_string)
       fit=lm(full_formula,data=PRSCS)
       A[i,]=c(summary(fit)$coefficient[1:2])
-    }
-    sumdata$cor=A[,1];sumdata$corse=A[,2]
-    sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
-    sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitjoint)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
   }
-  unlink(temp_dir, recursive = TRUE)
-  fitjoint$summarydata=sumdata
-  return(fitjoint)
+ sumdata$cor=A[,1];sumdata$corse=A[,2]
+ sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
+ sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitivw)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
+ fitivw$summarydata=sumdata
+ unlink(temp_dir, recursive = TRUE)
+ return(A=list(fitegger=fitegger,fitivw=fitivw))
 }
