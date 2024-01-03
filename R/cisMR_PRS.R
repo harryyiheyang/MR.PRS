@@ -84,6 +84,8 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
     PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
   }
   PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
+  PRSCS1=PRSCS
+  
   PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"])
   for(i in 1:length(NAM)){
     PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
@@ -105,16 +107,8 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitegger)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
   fitegger$summarydata=sumdata
   
-  pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
-  PRSCS=data.frame(ID=pred_outcome$FID,outcome=pred_outcome$SCORESUM)
-  for(i in 1:length(NAM)){
-    PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
-  }
-  PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
-  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
-  for(i in 1:length(NAM)){
-    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]])^2)
-  }
+  PRSCS=PRSCS1
+  remove(PRSCS1)
   predictors_string <- paste(NAM, collapse = " + ")
   full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
   full_formula <- as.formula(full_formula_string)
