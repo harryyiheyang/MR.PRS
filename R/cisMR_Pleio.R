@@ -54,7 +54,7 @@ cisMR_Pleio=function(outcomefile, CHR, BPcenter, BPtol, prscsxpath, plinkpath, c
   print("Step 3: Calculation of PRS using PLINK")
   setwd(plinkpath)
   system(glue("./plink --bfile {bfile} --score {prs_file_dir}/outcome_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR}.txt 2 4 6 header sum --out {prs_file_dir}/outcome"))
-  write.table(pleiotropy,file = "{prs_file_dir}/snplist.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+  write.table(pleiotropy,file = glue("{prs_file_dir}/snplist.txt"), row.names = FALSE, col.names = FALSE, quote = FALSE)
   system(glue("./plink --bfile {bfile} --extract {prs_file_dir}/snplist.txt --recode --out {prs_file_dir}/mydata_selected_snps"))
   Ple=fread(glue("{prs_file_dir}/mydata_selected_snps.ped"))%>%as.data.frame(.)
   names(Ple)[7:ncol(Ple)]=pleiotropy
