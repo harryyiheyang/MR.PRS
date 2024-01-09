@@ -80,7 +80,7 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   if(is.null(pleiotropy[1])!=1){
   write.table(pleiotropy,"{prs_file_dir}/snplist.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
   system(glue("./plink --bfile {bfile} --extract {prs_file_dir}/snplist.txt --recode --out {prs_file_dir}/mydata_selected_snps"))
-  Ple=fread("{prs_file_dir}/mydata_selected_snps.ped")%>%as.data.frame(.)
+  Ple=fread(glue("{prs_file_dir}/mydata_selected_snps.ped"))%>%as.data.frame(.)
   names(Ple)[7:ncol(Ple)]=pleiotropy
   Ple=Ple[which(Ple$ID%in%indMR),]
   }
