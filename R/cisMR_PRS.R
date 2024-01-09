@@ -131,13 +131,13 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
     predictors_string <- paste(NAM, collapse = " + ")
     full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
     full_formula <- as.formula(full_formula_string)
-    fitegger <- lm(full_formula, data = PRSCS)
+    fitivw <- lm(full_formula, data = PRSCS)
   }else{
     PRSCS=cbind(PRSCS,Ple)
     predictors_string <- paste(c(NAM,pleiotropy), collapse = " + ")
     full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
     full_formula <- as.formula(full_formula_string)
-    fitegger <- lm(full_formula, data = PRSCS)
+    fitivw <- lm(full_formula, data = PRSCS)
   }
   sumdata=as.data.frame(summary(fitivw)$coefficient[NAM,])
   A=matrix(0,length(NAM),2)
