@@ -6,7 +6,6 @@
 #' @param CHR The chromosome of interest for the analysis.
 #' @param BPcenter The central base pair position of the genomic region in the chromosome of interest.
 #' @param BPtol A threshold for the furthest SNP from the central base pair, used to define the genomic region of interest.
-#' @param eQTL_list A list of paths to exposure files. Exposure file corresponding to each path should have the same column as outcome file.
 #' @param prscsxpath Path to PRSCSx directory
 #' @param plinkpath Path to Plink software
 #' @param conda_env The name of the environment of PRSCSx in conda
@@ -32,7 +31,7 @@
 #' @export
 
 
-cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, pleiotropy=NULL){
+cisMR_Pleio=function(outcomefile, CHR, BPcenter, BPtol, prscsxpath, plinkpath, conda_env, ref_dir, bfile, indMR, pleiotropy){
   temp_dir <- tempfile()
   dir.create(temp_dir)
   prs_file_dir <- file.path(temp_dir, "prs_file")
@@ -41,116 +40,35 @@ cisMR_PRS=function(outcomefile, CHR, BPcenter, BPtol, eQTL_list, prscsxpath, pli
   dir.create(temporary_file_dir)
 
   print("Step 1: Processing the data")
-  NAM=names(eQTL_list)
-  GENE <- sapply(strsplit(NAM, "_", fixed = TRUE), `[`, 1)
-  eQTL_data=list()
-  NeQTL=c(1:length(NAM))
-  for(i in 1:length(NAM)){
-    A=fread(eQTL_list[[i]])%>%as.data.frame(.)
-    A=A[which(A$Gene==GENE[i]),]
-    A=A%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
-    eQTL_data[[i]]=A
-    NeQTL[i]=round(median(A$N))
-  }
-
   outcome=fread(outcomefile)%>%as.data.frame(.)
   SNP=c(outcome$SNP[which(outcome$CHR==CHR&abs(outcome$BP-BPcenter)<BPtol)])%>%unique(.)
   outcome=outcome[which(outcome$SNP%in%SNP),]%>%dplyr::select(SNP,A1,A2,BETA=Zscore,P,N)
   Noutcome=round(median(outcome$N))
-
   write.table(outcome,glue("{temporary_file_dir}/outcome.txt"),row.names=F,quote=F,sep="\t")
-  for(i in 1:length(NAM)){
-    write.table(eQTL_data[[i]],glue("{temporary_file_dir}/{NAM[i]}.txt"),row.names=F,quote=F,sep="\t")
-  }
 
   print("Step 2: Estimation of PRS using PRSCS")
   use_condaenv(conda_env, required = TRUE)
   setwd(prscsxpath)
   system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile} --sst_file={temporary_file_dir}/outcome.txt --n_gwas={Noutcome} --pop=EUR --out_dir={prs_file_dir} --out_name=outcome --chrom={CHR}"))
-  for(i in 1:length(NAM)){
-    system(glue("python PRScsx.py --ref_dir={ref_dir} --bim_prefix={bfile} --sst_file={temporary_file_dir}/{NAM[i]}.txt --n_gwas={NeQTL[i]} --pop=EUR --out_dir={prs_file_dir} --out_name={NAM[i]} --chrom={CHR}"))
-  }
 
   print("Step 3: Calculation of PRS using PLINK")
   setwd(plinkpath)
   system(glue("./plink --bfile {bfile} --score {prs_file_dir}/outcome_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR}.txt 2 4 6 header sum --out {prs_file_dir}/outcome"))
-  for(i in 1:length(NAM)){
-    system(glue("./plink --bfile {bfile} --score {prs_file_dir}/{NAM[i]}_EUR_pst_eff_a1_b0.5_phiauto_chr{CHR}.txt 2 4 6 header sum --out {prs_file_dir}/{NAM[i]}"))
-  }
-  if(is.null(pleiotropy[1])!=1){
   write.table(pleiotropy,file = "{prs_file_dir}/snplist.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
   Ple=fread("{prs_file_dir}/mydata_selected_snps.ped")%>%as.data.frame(.)
   names(Ple)[7:ncol(Ple)]=pleiotropy
   Ple=Ple[which(Ple$ID%in%indMR),]
-  }
+
   print("Step 4: Performing MVMR using predicted scores")
   pred_outcome=fread(glue("{prs_file_dir}/outcome.profile"))
   PRSCS=data.frame(ID=pred_outcome$FID,outcome=pred_outcome$SCORESUM)
-  for(i in 1:length(NAM)){
-    PRSCS[[NAM[i]]]=fread(glue("{prs_file_dir}/{NAM[i]}.profile"))$SCORESUM
-  }
   PRSCS=PRSCS[which(PRSCS$ID%in%indMR),]
-  PRSCS1=PRSCS
-
   PRSCS[,"outcome"]=PRSCS[,"outcome"]/sd(PRSCS[,"outcome"])
-  for(i in 1:length(NAM)){
-    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sd(PRSCS[,NAM[i]])
-  }
-  if(is.null(pleiotropy[1])==1){
-  predictors_string <- paste(NAM, collapse = " + ")
-  full_formula_string <- paste0("outcome", " ~ ", predictors_string)
-  full_formula <- as.formula(full_formula_string)
-  fitegger <- lm(full_formula, data = PRSCS)
-  }else{
   PRSCS=cbind(PRSCS,Ple)
-  predictors_string <- paste(c(NAM,pleiotropy), collapse = " + ")
+  predictors_string <- paste(pleiotropy, collapse = " + ")
   full_formula_string <- paste0("outcome", " ~ ", predictors_string)
   full_formula <- as.formula(full_formula_string)
   fitegger <- lm(full_formula, data = PRSCS)
-  }
-  sumdata=as.data.frame(summary(fitegger)$coefficient[NAM,])
-  A=matrix(0,length(NAM),2)
-  for(i in 1:length(NAM)){
-    full_formula_string <- paste0("outcome", " ~ ", NAM[i])
-    full_formula <- as.formula(full_formula_string)
-    fit=lm(full_formula,data=PRSCS)
-    A[i,]=c(summary(fit)$coefficient[2,1:2])
-  }
-  sumdata$cor=A[,1];sumdata$corse=A[,2]
-  sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
-  sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitegger)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
-  fitegger$summarydata=sumdata
 
-  PRSCS=PRSCS1
-  remove(PRSCS1)
-  PRSCS[,"outcome"]=PRSCS[,"outcome"]/sqrt(sum(PRSCS[,"outcome"]^2))
-  for(i in 1:length(NAM)){
-    PRSCS[,NAM[i]]=PRSCS[,NAM[i]]/sqrt(sum(PRSCS[,NAM[i]]^2))
-  }
-  if(is.null(pleiotropy[1])==1){
-    predictors_string <- paste(NAM, collapse = " + ")
-    full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
-    full_formula <- as.formula(full_formula_string)
-    fitegger <- lm(full_formula, data = PRSCS)
-  }else{
-    PRSCS=cbind(PRSCS,Ple)
-    predictors_string <- paste(c(NAM,pleiotropy), collapse = " + ")
-    full_formula_string <- paste0("outcome", " ~ ", predictors_string,"-1")
-    full_formula <- as.formula(full_formula_string)
-    fitegger <- lm(full_formula, data = PRSCS)
-  }
-  sumdata=as.data.frame(summary(fitivw)$coefficient[NAM,])
-  A=matrix(0,length(NAM),2)
-  for(i in 1:length(NAM)){
-      full_formula_string <- paste0("outcome", " ~ ", NAM[i],"-1")
-      full_formula <- as.formula(full_formula_string)
-      fit=lm(full_formula,data=PRSCS)
-      A[i,]=c(summary(fit)$coefficient[1:2])
-  }
- sumdata$cor=A[,1];sumdata$corse=A[,2]
- sumdata$pratt=sumdata[,1]*sumdata[,"cor"]
- sumdata$prattse=sqrt(sumdata[,1]^2*sumdata[,"corse"]^2+sumdata[,"cor"]^2*sumdata[,2]^2+(1-summary(fitivw)$r.squared)/nrow(outcome)*sumdata[,"pratt"])
- fitivw$summarydata=sumdata
- unlink(temp_dir, recursive = TRUE)
- return(A=list(fitegger=fitegger,fitivw=fitivw))
+  return(A=list(fitegger=fitegger))
 }
