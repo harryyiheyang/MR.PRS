@@ -2,6 +2,7 @@
 
 export(MR_PRS)
 export(cisMR_PRS)
+export(cisMR_Pleio)
 importFrom(data.table,fread)
 importFrom(data.table,setnames)
 importFrom(dplyr,`%>%`)
